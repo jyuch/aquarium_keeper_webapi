@@ -2,12 +2,11 @@ use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-use axum::{Extension, Router};
 use axum::extract::Path;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
-
+use axum::{Extension, Router};
 use tokio::sync::Mutex;
 
 #[tokio::main]
@@ -41,10 +40,17 @@ async fn get_data(
     Extension(state): Extension<SharedState>,
 ) -> impl IntoResponse {
     let s = state.lock().await;
-    let e = &"".to_string();
-    let value = s.data.get(&key).unwrap_or(e);
-    tracing::debug!("return {} {}", &key, &value);
-    value.clone()
+
+    match s.data.get(&key) {
+        Some(value) => {
+            tracing::debug!("get key: {} value: {}", &key, &value);
+            (StatusCode::OK, value.clone())
+        }
+        None => {
+            tracing::debug!("get key: {}, but not found", &key);
+            (StatusCode::NOT_FOUND, "".to_string())
+        }
+    }
 }
 
 async fn post_data(
@@ -54,8 +60,8 @@ async fn post_data(
 ) -> impl IntoResponse {
     let mut s = state.lock().await;
     s.data.insert(key.clone(), body.clone());
-    tracing::debug!("insert {} {}", &key, &body);
-    StatusCode::OK
+    tracing::debug!("post key: {} value: {}", &key, &body);
+    (StatusCode::OK, body.clone())
 }
 
 struct State {
