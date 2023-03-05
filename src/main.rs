@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::net::SocketAddr;
+use std::str::FromStr;
 use std::sync::Arc;
 
 use axum::extract::Path;
@@ -7,10 +8,20 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::routing::{delete, get, post};
 use axum::{Extension, Router};
+use clap::Parser;
 use tokio::sync::Mutex;
 
+#[derive(Parser, Debug)]
+#[clap(version, about)]
+struct Cli {
+    /// Bind IP address.
+    #[clap(long, default_value = "127.0.0.1:3000")]
+    bind: String,
+}
+
 #[tokio::main]
-async fn main() {
+async fn main() -> anyhow::Result<()> {
+    let cli = Cli::parse();
     tracing_subscriber::fmt::init();
 
     let state = Arc::new(Mutex::new(State {
@@ -24,12 +35,13 @@ async fn main() {
         .route("/-/:path", delete(delete_data))
         .layer(Extension(state));
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    let addr = SocketAddr::from_str(&cli.bind)?;
     tracing::debug!("listening on {}", addr);
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
-        .await
-        .unwrap();
+        .await?;
+
+    Ok(())
 }
 
 async fn root() -> &'static str {
