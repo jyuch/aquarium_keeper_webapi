@@ -5,7 +5,7 @@ use std::sync::Arc;
 use axum::extract::Path;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
-use axum::routing::{get, post};
+use axum::routing::{delete, get, post};
 use axum::{Extension, Router};
 use tokio::sync::Mutex;
 
@@ -21,6 +21,7 @@ async fn main() {
         .route("/", get(root))
         .route("/-/:path", get(get_data))
         .route("/-/:path", post(post_data))
+        .route("/-/:path", delete(delete_data))
         .layer(Extension(state));
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
@@ -62,6 +63,24 @@ async fn post_data(
     s.data.insert(key.clone(), body.clone());
     tracing::debug!("post key: {} value: {}", &key, &body);
     (StatusCode::OK, body.clone())
+}
+
+async fn delete_data(
+    Path(key): Path<String>,
+    Extension(state): Extension<SharedState>,
+) -> impl IntoResponse {
+    let mut s = state.lock().await;
+
+    match s.data.remove(&key) {
+        Some(value) => {
+            tracing::debug!("delete key: {} value: {}", &key, &value);
+            (StatusCode::OK, value)
+        }
+        None => {
+            tracing::debug!("delete key: {}, but not found", &key);
+            (StatusCode::NOT_FOUND, "".to_string())
+        }
+    }
 }
 
 struct State {
