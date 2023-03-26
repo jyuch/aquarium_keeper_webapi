@@ -5,7 +5,7 @@ authors = ["jyuch <jyuch@users.noreply.github.com>"]
 edition = "2021"
 
 [dependencies]
-clap = { version = "4.0", features = ["derive"] }
+clap = { version = "4.1", features = ["derive"] }
 anyhow = "1.0"
 thiserror = "1.0"
 axum = { version = "0.6" }
